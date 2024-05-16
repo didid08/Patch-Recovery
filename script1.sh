@@ -4,6 +4,8 @@ if [ -f recovery.img.lz4 ];then
 	lz4 -B6 --content-size -f recovery.img.lz4 recovery.img
 fi
 
+mv recovery.img?rlkey=ohjxlb0t275fc7wzahsh89ygu recovery.img
+
 off=$(grep -ab -o SEANDROIDENFORCE recovery.img |tail -n 1 |cut -d : -f 1)
 dd if=recovery.img of=r.img bs=4k count=$off iflag=count_bytes
 

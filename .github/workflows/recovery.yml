@@ -9,51 +9,73 @@ on:
         default: 'https://transfer.sh/(RECOMMENDED)'
 
 env:
-  RECOVERY_URL: 'https://dl.dropboxusercontent.com/scl/fi/qe1nydrelkk7fpa164fs6/recovery.img?rlkey=iwtol7732wfa87qy9ci1gmca0&st=l9leecj1&dl=0'
+  RECOVERY_URL: https://oshi.at/Rpjg
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     steps:
-    - name: Check Out Repository
-      uses: actions/checkout@v4
+    - name: Check Out
+      uses: actions/checkout@main
 
-    - name: Prepare Environment
+    - name: Prepare the environment
       run: |
-        sudo apt update
-        sudo apt install -y git wget lz4 tar openssl python3
+        sudo apt install git wget lz4 tar openssl python3 -y
 
-    - name: Fetch Image from URL
+    - name: Fetch image from URL
       run: |
         ls
         pwd
-        wget "${{ github.event.inputs.RECOVERY_URL }}" -O recovery.img
+        wget ${{github.event.inputs.RECOVERY_URL }} -O recovery.img
+        # Verify file size after download
+        du -h recovery.img
 
     - name: Patch Process-1
       run: |
-        chmod +x script1.sh magiskboot
+        chmod a+x script1.sh
+        chmod a+x magiskboot
         ./script1.sh || true
 
     - name: Patch Process-2
       run: |
-        chmod +x script2.sh
+        chmod a+x script2.sh
         ./script2.sh || true
         python3 avbtool extract_public_key --key phh.pem --output phh.pub.bin
-        python3 avbtool add_hash_footer \
-          --partition_name recovery \
-          --partition_size $(wc -c < recovery.img) \
-          --image recovery-patched.img \
-          --key phh.pem --algorithm SHA256_RSA4096
+        python3 avbtool add_hash_footer --partition_name recovery --partition_size $(wc -c recovery.img |cut -f 1 -d ' ') --image recovery-patched.img --key phh.pem --algorithm SHA256_RSA4096
+        
+        # Verify patched image exists and check its size
+        du -h recovery-patched.img
         
         mkdir -p output
-        mv recovery-patched.img output/recovery.img
-        tar cvf output/fastbootd-recovery.tar -C output recovery.img
-        md5sum output/fastbootd-recovery.tar > output/fastbootd-recovery.tar.md5
+        cp recovery-patched.img output/recovery.img
+        
+        # Create the tarball in the output directory
+        cd output
+        tar cvf fastbootd-recovery.tar recovery.img
+        md5sum -t fastbootd-recovery.tar >> fastbootd-recovery.tar
+        mv fastbootd-recovery.tar fastbootd-recovery.tar.md5
+        
+        # Verify the final archive size
+        du -h fastbootd-recovery.tar.md5
 
-    - name: Upload Patched Recovery
+    - name: Debug Output Directory
+      run: |
+        ls -la output/
+        du -h output/*
+
+    - name: Upload Recovery
       uses: actions/upload-artifact@v4
       with:
+        path: output/fastbootd-recovery.tar.md5
         name: Patched-Recovery
-        path: output/*.md5
+        retention-days: 7
+
+    # Backup method in case the primary upload fails
+    - name: Upload Recovery (Alternative)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        path: output/
+        name: Patched-Recovery-All-Files
         retention-days: 7

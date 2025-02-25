@@ -6,10 +6,10 @@ on:
       RECOVERY_URL:
         description: 'RECOVERY URL'
         required: true
-        default: ''
+        default: 'https://transfer.sh/(RECOMMENDED)'
 
 env:
-  RECOVERY_URL: ''
+  RECOVERY_URL: https://oshi.at/Rpjg
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - name: Check Out
-      uses: actions/checkout@v4
+      uses: actions/checkout@main
 
     - name: Prepare the environment
       run: |
@@ -27,12 +27,7 @@ jobs:
       run: |
         ls
         pwd
-        wget ${{github.event.inputs.RECOVERY_URL}} -O recovery.img
-
-    - name: Rename Recovery Image
-      run: |
-        mv recovery.img* recovery.img
-        ls -lah
+        wget ${{github.event.inputs.RECOVERY_URL }} -O recovery.img
 
     - name: Patch Process-1
       run: |
@@ -53,7 +48,7 @@ jobs:
         mv fastbootd-recovery.tar fastbootd-recovery.tar.md5
 
     - name: Upload Recovery
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3.0.0
       with:
         path: /home/runner/work/Patch-Recovery/Patch-Recovery/output/*.md5
         name: Patched-Recovery

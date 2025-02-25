@@ -21,27 +21,57 @@ jobs:
 
     - name: Prepare the environment
       run: |
+        sudo apt update
         sudo apt install git wget lz4 tar openssl python3 -y
+        
+    - name: Install avbtool if not present
+      run: |
+        if ! command -v avbtool &> /dev/null; then
+          pip3 install avbtool
+        fi
+
+    - name: Verify scripts exist
+      run: |
+        ls -la
+        if [ ! -f "script1.sh" ]; then
+          echo "script1.sh does not exist"
+          exit 1
+        fi
+        if [ ! -f "script2.sh" ]; then
+          echo "script2.sh does not exist"
+          exit 1
+        fi
+        if [ ! -f "magiskboot" ]; then
+          echo "magiskboot does not exist"
+          exit 1
+        fi
 
     - name: Fetch image from URL
       run: |
-        ls
-        pwd
-        wget ${{github.event.inputs.RECOVERY_URL }} -O recovery.img
+        wget "${{ github.event.inputs.RECOVERY_URL }}" -O recovery.img || wget "${{ env.RECOVERY_URL }}" -O recovery.img
 
     - name: Patch Process-1
       run: |
         chmod a+x script1.sh
         chmod a+x magiskboot
-        ./script1.sh || true
+        bash ./script1.sh || true
 
     - name: Patch Process-2
       run: |
         chmod a+x script2.sh
-        ./script2.sh || true
-        python3 avbtool extract_public_key --key phh.pem --output phh.pub.bin
-        python3 avbtool add_hash_footer --partition_name recovery --partition_size $(wc -c recovery.img |cut -f 1 -d ' ') --image recovery-patched.img --key phh.pem --algorithm SHA256_RSA4096
-        mkdir output && cd output
+        bash ./script2.sh || true
+        
+        # Check if avbtool exists as Python module or standalone
+        if command -v avbtool &> /dev/null; then
+          AVBTOOL="avbtool"
+        else
+          AVBTOOL="python3 avbtool"
+        fi
+        
+        $AVBTOOL extract_public_key --key phh.pem --output phh.pub.bin
+        $AVBTOOL add_hash_footer --partition_name recovery --partition_size $(wc -c recovery.img |cut -f 1 -d ' ') --image recovery-patched.img --key phh.pem --algorithm SHA256_RSA4096
+        
+        mkdir -p output && cd output
         mv ../recovery-patched.img recovery.img
         tar cvf fastbootd-recovery.tar recovery.img
         md5sum -t fastbootd-recovery.tar >> fastbootd-recovery.tar

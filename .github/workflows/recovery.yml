@@ -6,10 +6,10 @@ on:
       RECOVERY_URL:
         description: 'RECOVERY URL'
         required: true
-        default: 'https://dl.dropboxusercontent.com/scl/fi/qe1nydrelkk7fpa164fs6/recovery.img?rlkey=iwtol7732wfa87qy9ci1gmca0&st=l9leecj1&dl=0'
+        default: ''
 
 env:
-  RECOVERY_URL: 'https://dl.dropboxusercontent.com/scl/fi/qe1nydrelkk7fpa164fs6/recovery.img?rlkey=iwtol7732wfa87qy9ci1gmca0&st=l9leecj1&dl=0'
+  RECOVERY_URL: ''
 
 jobs:
   build:
@@ -28,6 +28,11 @@ jobs:
         ls
         pwd
         wget ${{github.event.inputs.RECOVERY_URL}} -O recovery.img
+
+    - name: Rename Recovery Image
+      run: |
+        mv recovery.img* recovery.img
+        ls -lah
 
     - name: Patch Process-1
       run: |
